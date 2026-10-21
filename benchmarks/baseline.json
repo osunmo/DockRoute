@@ -1,0 +1,46 @@
+{
+  "schema_version": "dockroute.evaluation-baseline/1.0",
+  "tool_version": "0.3.0",
+  "historical": true,
+  "current_release_accuracy_established": false,
+  "reviewer": "agent-source; no independent human validation",
+  "oracle_coverage": "partial",
+  "blind": {
+    "repositories": 5,
+    "reviewed_precision": {
+      "correct": 42,
+      "reviewed": 47
+    },
+    "partial_oracle_recall": {
+      "correct": 42,
+      "total": 61
+    },
+    "reviewed_predictions": 47,
+    "eligible_predictions": 59,
+    "unreviewed_predictions": 12,
+    "known_misses": 19
+  },
+  "development": {
+    "configurations": 25,
+    "partial_oracle_recall": {
+      "correct": 88,
+      "total": 148
+    },
+    "reviewed_predictions": 88,
+    "eligible_predictions": 248,
+    "unreviewed_predictions": 160,
+    "known_misses": 60
+  },
+  "real_project_injected_faults": {
+    "validated_faults": 4,
+    "automatic_root_cause_static": 1,
+    "automatic_root_cause_active": 2
+  },
+  "source_records_sha256": {
+    "corpus-holdout-blind-summary.json": "632089b3b06a6de556c629ad2fb985b23183a12d20763e9f23d21ffc8f3f4438",
+    "corpus-development-final-summary.json": "1d254e8e92ea0cfb92631ec9cbf2efe4bb9fc1c1fc77974358fa918d35940174",
+    "corpus-injected-faults-summary.json": "9bfdebd79524085dd77407c61efb2802740cb5b1049cb2c2142fa14d00a2266f"
+  },
+  "blind_freeze_revision": "1f2464afa2acbea140d0d6bf94e690b51d7eebfb",
+  "interpretation": "Synthetic regression passes are not real-project accuracy estimates."
+}

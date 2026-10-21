@@ -1,0 +1,11 @@
+services:
+  app:
+    image: python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
+    command: [python, -u, -c, "import time; time.sleep(3600)"]
+    environment:
+      UPSTREAM_URL: http://api:8000
+    depends_on: [api]
+  api:
+    image: python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
+    command: [python, -c, "raise SystemExit(1)"]
+    restart: always

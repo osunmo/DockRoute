@@ -1,0 +1,17 @@
+scenario: 07-destination-restart-loop
+ground_truth_fault: destination exits with status 1 and Docker restarts it repeatedly
+runtime_kind: destination_restart
+source_service: app
+destination_service: api
+target_host: api
+target_port: 8000
+root_cause_code: null
+expected_behavior: api restart count rises and no stable api:8000 listener exists
+static_codes: [UNKNOWN]
+active_codes: [UNKNOWN, CONNECTION_REFUSED, DNS_FAILURE]
+manual_codes: [UNKNOWN, CONNECTION_REFUSED, DNS_FAILURE]
+accepted_uncertainty: [UNKNOWN, CONNECTION_REFUSED, DNS_FAILURE]
+required_evidence: [destination_state]
+expected_exit: {static: 2, active: [1, 2, 6], manual: [1, 2, 6]}
+cleanup: all owned containers, networks, and probe helpers removed
+notes: Refusal or DNS failure may be observed during a restart; neither proves a network root cause.

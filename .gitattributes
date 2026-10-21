@@ -1,0 +1,4 @@
+# Corpus records are byte-hashed evidence. Preserve their original line endings.
+benchmarks/corpus/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# CSV fields may intentionally contain spaces; keep the recorded values intact.
+benchmarks/corpus/*.csv -whitespace

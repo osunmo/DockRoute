@@ -1,0 +1,45 @@
+services:
+  app:
+    image: python:3.12-alpine
+    environment:
+      UPSTREAM_URL: http://api:18000
+    command:
+    - python
+    - -u
+    - -c
+    - "import os,time,urllib.request\nwhile True:\n  try:\n    with urllib.request.urlopen(os.environ[\"UPSTREAM_URL\"\
+      ], timeout=2) as response:\n      print(\"request OK: status\", response.status, flush=True)\n  except Exception\
+      \ as error:\n    print(\"request FAILED:\", type(error).__name__, str(error), flush=True)\n  time.sleep(4)\n"
+    depends_on:
+    - api
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import os,urllib.request; urllib.request.urlopen(os.environ["UPSTREAM_URL"],timeout=2).read()
+      interval: 5s
+      timeout: 3s
+      retries: 2
+      start_period: 2s
+  api:
+    image: python:3.12-alpine
+    command:
+    - python
+    - -m
+    - http.server
+    - '8000'
+    - --bind
+    - 0.0.0.0
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen("http://localhost:8000",timeout=2).read()
+      interval: 5s
+      timeout: 3s
+      retries: 2
+      start_period: 2s
+    ports:
+    - 127.0.0.1:18000:8000

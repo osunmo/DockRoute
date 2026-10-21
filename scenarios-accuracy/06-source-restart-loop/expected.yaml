@@ -1,0 +1,17 @@
+scenario: 06-source-restart-loop
+ground_truth_fault: source exits with status 1 and Docker restarts it repeatedly
+runtime_kind: source_restart
+source_service: app
+destination_service: api
+target_host: api
+target_port: 8000
+root_cause_code: null
+expected_behavior: app restart count rises while api remains reachable
+static_codes: [UNKNOWN]
+active_codes: [UNKNOWN]
+manual_codes: [UNKNOWN]
+accepted_uncertainty: [UNKNOWN, HELPER_EXECUTION_FAILED]
+required_evidence: [source_state]
+expected_exit: {static: 2, active: [2, 6], manual: [2, 6]}
+cleanup: all owned containers, networks, and probe helpers removed
+notes: Probe unavailability is an execution outcome, not proof of a network fault.

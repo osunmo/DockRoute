@@ -1,0 +1,16 @@
+scenario: 03-host-port-confusion
+description: api publishes host port 18000 but listens on container port 8000.
+intended_edge:
+  source_service: app
+  destination_service: api
+  destination_port: 8000
+observed_config:
+  env_name: UPSTREAM_URL
+  env_value: http://api:18000
+expected_diagnosis: HOST_PORT_INSTEAD_OF_CONTAINER_PORT
+expected_app_health: unhealthy
+expected_api_health: healthy
+recommended_fix: Use http://api:8000 for container-to-container traffic.
+scratch_verification_safe_if_no_external_resources: false
+notes: Test expectation written before competing tools are run; classification is
+  not a measured tool result.

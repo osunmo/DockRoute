@@ -1,0 +1,623 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dockroute:report:2.0",
+  "title": "DockRoute report or error 2.0",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/report"
+    },
+    {
+      "$ref": "#/$defs/error"
+    }
+  ],
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "detail"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "id",
+        "aliases",
+        "addresses"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "port": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "container",
+        "protocol",
+        "host",
+        "host_ip"
+      ],
+      "properties": {
+        "container": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "host": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "host_ip": {
+          "type": "string"
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "service",
+        "container_id",
+        "container_name",
+        "state",
+        "health",
+        "restart_count",
+        "networks",
+        "ports"
+      ],
+      "properties": {
+        "service": {
+          "type": "string"
+        },
+        "container_id": {
+          "type": "string"
+        },
+        "container_name": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "health": {
+          "type": "string"
+        },
+        "restart_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "networks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/network"
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "source",
+        "source_container",
+        "destination",
+        "destination_service",
+        "port",
+        "observations",
+        "intention_evidence",
+        "explanation",
+        "confidence",
+        "remediation",
+        "verification",
+        "status",
+        "probe"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "NETWORK_ISOLATION",
+            "WRONG_LOCALHOST",
+            "HOST_PORT_INSTEAD_OF_CONTAINER_PORT",
+            "LOOPBACK_ONLY_LISTENER",
+            "INVALID_SERVICE_HOSTNAME",
+            "CONNECTION_REFUSED",
+            "CONNECTION_TIMEOUT",
+            "DNS_FAILURE",
+            "SERVICE_UNHEALTHY",
+            "HEALTHY",
+            "UNKNOWN"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "source_container": {
+          "type": "string"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "destination_service": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "port": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "intention_evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "remediation": {
+          "type": "string"
+        },
+        "verification": {
+          "enum": [
+            "static",
+            "active"
+          ]
+        },
+        "status": {
+          "enum": [
+            "NO_STATIC_ISSUES_FOUND",
+            "REACHABLE",
+            "NETWORK_FAILURE",
+            "PROBE_UNAVAILABLE",
+            "UNKNOWN"
+          ]
+        },
+        "probe": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/probe"
+            }
+          ]
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "dockroute_version",
+        "docker_version",
+        "project",
+        "probe_requested",
+        "services",
+        "findings",
+        "limitations",
+        "configuration_modified",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "2.0"
+        },
+        "dockroute_version": {
+          "type": "string"
+        },
+        "docker_version": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "probe_requested": {
+          "type": "boolean"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/service"
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "configuration_modified": {
+          "const": false
+        },
+        "status": {
+          "enum": [
+            "NO_STATIC_ISSUES_FOUND",
+            "REACHABLE",
+            "NETWORK_FAILURE",
+            "PROBE_UNAVAILABLE",
+            "UNKNOWN"
+          ]
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "dockroute_version",
+        "error"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "2.0"
+        },
+        "dockroute_version": {
+          "type": "string"
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message"
+          ],
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        },
+        "probe_trace": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/probe_trace"
+          }
+        }
+      }
+    },
+    "probe_trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "stage",
+        "state",
+        "elapsed_ms",
+        "error_type",
+        "exit_code",
+        "stderr",
+        "timeout_kind",
+        "cleanup",
+        "recovered",
+        "helper_configuration"
+      ],
+      "properties": {
+        "role": {
+          "enum": [
+            "source",
+            "destination"
+          ]
+        },
+        "stage": {
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "SUCCESS",
+            "DNS_FAILURE",
+            "TCP_REFUSED",
+            "TCP_TIMEOUT",
+            "HELPER_IMAGE_UNAVAILABLE",
+            "HELPER_CREATE_FAILED",
+            "HELPER_START_FAILED",
+            "HELPER_EXECUTION_FAILED",
+            "HELPER_TIMEOUT",
+            "INVALID_WORKER_OUTPUT",
+            "UNKNOWN"
+          ]
+        },
+        "elapsed_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "error_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "exit_code": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "timeout_kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cleanup": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recovered": {
+          "type": "boolean"
+        },
+        "helper_configuration": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "image",
+                "network_mode",
+                "entrypoint",
+                "worker_sha256",
+                "read_only",
+                "cap_drop",
+                "memory_bytes",
+                "pids_limit",
+                "cpu_limit",
+                "helper_name",
+                "execution_id",
+                "mode"
+              ],
+              "properties": {
+                "image": {
+                  "type": "string"
+                },
+                "network_mode": {
+                  "type": "string"
+                },
+                "entrypoint": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "worker_sha256": {
+                  "type": "string"
+                },
+                "read_only": {
+                  "const": true
+                },
+                "cap_drop": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "memory_bytes": {
+                  "type": "integer"
+                },
+                "pids_limit": {
+                  "type": "integer"
+                },
+                "cpu_limit": {
+                  "type": "number"
+                },
+                "helper_name": {
+                  "type": "string"
+                },
+                "execution_id": {
+                  "type": "string"
+                },
+                "mode": {
+                  "enum": [
+                    "connect",
+                    "listen"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "listener_state",
+        "failure_stage",
+        "dns",
+        "tcp",
+        "addresses",
+        "resolver_files_match",
+        "listener_addresses",
+        "listener_verified",
+        "execution_id",
+        "startup_timeout",
+        "execution_timeout",
+        "cleanup",
+        "trace"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "SUCCESS",
+            "DNS_FAILURE",
+            "TCP_REFUSED",
+            "TCP_TIMEOUT",
+            "HELPER_IMAGE_UNAVAILABLE",
+            "HELPER_CREATE_FAILED",
+            "HELPER_START_FAILED",
+            "HELPER_EXECUTION_FAILED",
+            "HELPER_TIMEOUT",
+            "INVALID_WORKER_OUTPUT",
+            "UNKNOWN"
+          ]
+        },
+        "listener_state": {
+          "enum": [
+            "SUCCESS",
+            "DNS_FAILURE",
+            "TCP_REFUSED",
+            "TCP_TIMEOUT",
+            "HELPER_IMAGE_UNAVAILABLE",
+            "HELPER_CREATE_FAILED",
+            "HELPER_START_FAILED",
+            "HELPER_EXECUTION_FAILED",
+            "HELPER_TIMEOUT",
+            "INVALID_WORKER_OUTPUT",
+            "UNKNOWN"
+          ]
+        },
+        "failure_stage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dns": {
+          "enum": [
+            "ok",
+            "failed",
+            "timeout",
+            "unknown"
+          ]
+        },
+        "tcp": {
+          "enum": [
+            "ok",
+            "refused",
+            "timeout",
+            "blocked",
+            "unknown"
+          ]
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resolver_files_match": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "listener_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "listener_verified": {
+          "type": "boolean"
+        },
+        "execution_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "startup_timeout": {
+          "type": "number",
+          "minimum": 0
+        },
+        "execution_timeout": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cleanup": {
+          "enum": [
+            "complete",
+            "not_needed",
+            "failed"
+          ]
+        },
+        "trace": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/probe_trace"
+          }
+        }
+      }
+    }
+  }
+}

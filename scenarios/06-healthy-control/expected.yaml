@@ -1,0 +1,16 @@
+scenario: 06-healthy-control
+description: Both services are on the default network and app can reach api.
+intended_edge:
+  source_service: app
+  destination_service: api
+  destination_port: 8000
+observed_config:
+  env_name: UPSTREAM_URL
+  env_value: http://api:8000
+expected_diagnosis: TCP_REACHABLE
+expected_app_health: healthy
+expected_api_health: healthy
+recommended_fix: No fix required.
+scratch_verification_safe_if_no_external_resources: true
+notes: Test expectation written before competing tools are run; classification is
+  not a measured tool result.

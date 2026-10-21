@@ -1,0 +1,58 @@
+name: Native release builds
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux-evidence:
+    uses: ./.github/workflows/diagnostic-accuracy.yml
+    with:
+      runs: 10
+  binary:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e ".[dev,binary]"
+      - run: python -m pytest -q
+      - run: python -m ruff check src tests scripts
+      - run: python -m ruff format --check src tests scripts
+      # Host correctness is tested natively; the worker targets Linux containers.
+      - run: python -m mypy --explicit-package-bases --platform linux src/dockroute scripts/benchmark_latency.py scripts/benchmark_coldstart.py --check-untyped-defs --ignore-missing-imports
+      - run: python scripts/build_binary.py --output outputs
+      - if: runner.os == 'Linux'
+        run: dockroute-benchmark --binary ./outputs/dockroute --allow-fixed-ports --output outputs/benchmark.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dockroute-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            outputs/*.zip
+            outputs/*.tar.gz
+            outputs/*.sha256
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [binary, linux-evidence]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: artifacts
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          mapfile -d '' assets < <(find artifacts -maxdepth 1 -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.sha256' \) -print0)
+          gh release create "$RELEASE_TAG" "${assets[@]}" --generate-notes --draft

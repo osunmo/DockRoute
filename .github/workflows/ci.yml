@@ -1,0 +1,54 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.11', '3.12', '3.13', '3.14']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest -q --cov=dockroute --cov-report=term-missing
+      - run: python -m ruff check src tests scripts
+      - run: python -m ruff format --check src tests scripts
+      # The bundled probe worker runs in Linux containers on every host OS.
+      - run: >-
+          python -m mypy --explicit-package-bases --platform linux
+          src/dockroute scripts/benchmark_latency.py scripts/benchmark_coldstart.py
+          scripts/evaluate_corpus.py scripts/prepare_corpus.py scripts/run_corpus_live.py
+          scripts/run_corpus_faults.py scripts/report_corpus.py scripts/report_corpus_faults.py
+          scripts/benchmark_accuracy.py
+          --check-untyped-defs --ignore-missing-imports
+      - run: python -m build --outdir outputs
+  scenarios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e ".[dev,binary]"
+      - run: docker version && docker compose version
+      - run: python scripts/build_binary.py --output outputs
+      - run: dockroute-benchmark --binary ./outputs/dockroute --allow-fixed-ports --output outputs/benchmark.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: scenario-benchmark
+          path: outputs/benchmark.json
+  linux-accuracy:
+    uses: ./.github/workflows/diagnostic-accuracy.yml
+    with:
+      runs: 10

@@ -1,0 +1,17 @@
+scenario: 02-wrong-port
+ground_truth_fault: api listens on 8000 while app targets 8001
+runtime_kind: wrong_port
+source_service: app
+destination_service: api
+target_host: api
+target_port: 8001
+root_cause_code: null
+expected_behavior: api:8000 accepts TCP; api:8001 refuses TCP
+static_codes: [UNKNOWN]
+active_codes: [CONNECTION_REFUSED]
+manual_codes: [CONNECTION_REFUSED]
+accepted_uncertainty: [UNKNOWN]
+required_evidence: [probe]
+expected_exit: {static: 2, active: 1, manual: 1}
+cleanup: all owned containers, networks, and probe helpers removed
+notes: CONNECTION_REFUSED establishes a transport result, not the specific wrong-port root cause.

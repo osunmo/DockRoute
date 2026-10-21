@@ -1,0 +1,8 @@
+include LICENSE CONTRIBUTING.md CHANGELOG.md Makefile
+recursive-include docs *.md *.json
+recursive-include scenarios *.yaml
+recursive-include scenarios-accuracy *.yaml
+recursive-include scripts *.py
+recursive-include tests *.py *.json
+include benchmarks/baseline.json
+recursive-include .github *.yml

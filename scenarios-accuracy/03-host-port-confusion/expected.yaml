@@ -1,0 +1,17 @@
+scenario: 03-host-port-confusion
+ground_truth_fault: app uses host-published port 18001 inside Compose instead of container port 8000
+runtime_kind: host_port_confusion
+source_service: app
+destination_service: api
+target_host: api
+target_port: 18001
+root_cause_code: HOST_PORT_INSTEAD_OF_CONTAINER_PORT
+expected_behavior: api:8000 accepts TCP; api:18001 refuses TCP; host loopback 18001 maps to api:8000
+static_codes: [HOST_PORT_INSTEAD_OF_CONTAINER_PORT]
+active_codes: [HOST_PORT_INSTEAD_OF_CONTAINER_PORT]
+manual_codes: [HOST_PORT_INSTEAD_OF_CONTAINER_PORT]
+accepted_uncertainty: [UNKNOWN]
+required_evidence: [port_mapping]
+expected_exit: {static: 1, active: 1, manual: 1}
+cleanup: all owned containers, networks, and probe helpers removed
+notes: Requires explicit --allow-fixed-ports after confirming host port 18001 is free.

@@ -1,0 +1,18 @@
+scenario: 04-http-500
+ground_truth_fault: application returns HTTP 500 after accepting TCP
+runtime_kind: http_error
+http_status: 500
+source_service: app
+destination_service: api
+target_host: api
+target_port: 8000
+root_cause_code: null
+expected_behavior: source TCP succeeds and HTTP response is 500
+static_codes: [UNKNOWN]
+active_codes: [TCP_REACHABLE]
+manual_codes: [TCP_REACHABLE]
+accepted_uncertainty: [UNKNOWN]
+required_evidence: [probe]
+expected_exit: {static: 2, active: 0, manual: 0}
+cleanup: all owned containers, networks, and probe helpers removed
+notes: TCP_REACHABLE means TCP reachable only; report must state application protocol readiness was not tested.

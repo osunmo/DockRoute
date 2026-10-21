@@ -1,0 +1,314 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dockroute:report:1.0",
+  "title": "DockRoute report or error 1.0",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/report"
+    },
+    {
+      "$ref": "#/$defs/error"
+    }
+  ],
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "detail"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "id",
+        "aliases",
+        "addresses"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "port": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "container",
+        "protocol",
+        "host",
+        "host_ip"
+      ],
+      "properties": {
+        "container": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "host": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "host_ip": {
+          "type": "string"
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "service",
+        "container_id",
+        "container_name",
+        "state",
+        "health",
+        "restart_count",
+        "networks",
+        "ports"
+      ],
+      "properties": {
+        "service": {
+          "type": "string"
+        },
+        "container_id": {
+          "type": "string"
+        },
+        "container_name": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "health": {
+          "type": "string"
+        },
+        "restart_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "networks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/network"
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "source",
+        "source_container",
+        "destination",
+        "destination_service",
+        "port",
+        "observations",
+        "intention_evidence",
+        "explanation",
+        "confidence",
+        "remediation",
+        "verification"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "NETWORK_ISOLATION",
+            "WRONG_LOCALHOST",
+            "HOST_PORT_INSTEAD_OF_CONTAINER_PORT",
+            "LOOPBACK_ONLY_LISTENER",
+            "INVALID_SERVICE_HOSTNAME",
+            "CONNECTION_REFUSED",
+            "CONNECTION_TIMEOUT",
+            "DNS_FAILURE",
+            "SERVICE_UNHEALTHY",
+            "HEALTHY",
+            "UNKNOWN"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "source_container": {
+          "type": "string"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "destination_service": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "port": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "intention_evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "remediation": {
+          "type": "string"
+        },
+        "verification": {
+          "enum": [
+            "static",
+            "active"
+          ]
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "dockroute_version",
+        "docker_version",
+        "project",
+        "probe_requested",
+        "services",
+        "findings",
+        "limitations",
+        "configuration_modified"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "dockroute_version": {
+          "type": "string"
+        },
+        "docker_version": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "probe_requested": {
+          "type": "boolean"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/service"
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "configuration_modified": {
+          "const": false
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "dockroute_version",
+        "error"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "dockroute_version": {
+          "type": "string"
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "message"
+          ],
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

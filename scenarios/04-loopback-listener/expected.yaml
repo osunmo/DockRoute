@@ -1,0 +1,17 @@
+scenario: 04-loopback-listener
+description: api listens only on its own loopback interface; the app cannot reach
+  it via its container IP.
+intended_edge:
+  source_service: app
+  destination_service: api
+  destination_port: 8000
+observed_config:
+  env_name: UPSTREAM_URL
+  env_value: http://api:8000
+expected_diagnosis: LOOPBACK_ONLY_LISTENER
+expected_app_health: unhealthy
+expected_api_health: healthy
+recommended_fix: Bind api to 0.0.0.0 instead of 127.0.0.1.
+scratch_verification_safe_if_no_external_resources: true
+notes: Test expectation written before competing tools are run; classification is
+  not a measured tool result.

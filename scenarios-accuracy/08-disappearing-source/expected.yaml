@@ -1,0 +1,17 @@
+scenario: 08-disappearing-source
+ground_truth_fault: benchmark removes its owned app container after probe helper lease is recorded
+runtime_kind: disappearing_source
+source_service: app
+destination_service: api
+target_host: api
+target_port: 8000
+root_cause_code: null
+expected_behavior: app is removed during active probe; api remains running
+static_codes: [UNKNOWN]
+active_codes: [UNKNOWN]
+manual_codes: []
+accepted_uncertainty: [UNKNOWN, HELPER_EXECUTION_FAILED]
+required_evidence: [probe]
+expected_exit: {static: 2, active: [2, 6]}
+cleanup: all owned containers, networks, and probe helpers removed
+notes: Race injection must be confirmed; otherwise the run is an injection failure and remains counted.
