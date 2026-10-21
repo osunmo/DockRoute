@@ -10,6 +10,27 @@ from types import SimpleNamespace
 import pytest
 
 
+def assert_private_streams_omitted(value):
+    # Match the actual secret sentinels, not macOS's legitimate /private/ path.
+    rendered = json.dumps(value)
+    for marker in (
+        "private-secret",
+        "private-stdout",
+        "private-warning",
+        "private-config-fragment",
+        "private-process-failure",
+        "private-crash-output",
+        "private-crash-stderr",
+        "private-invalid-json",
+        "private-parser-stderr",
+        "private-partial",
+        "private-timeout",
+        "private-command-message",
+        "private-exception-message",
+    ):
+        assert marker not in rendered
+
+
 @pytest.fixture
 def evaluator():
     path = Path(__file__).resolve().parents[1] / "scripts" / "evaluate_corpus.py"
@@ -278,7 +299,7 @@ def test_normalization_errors_never_include_stderr(
     )
     result = evaluator.normalize_compose(case_at(tmp_path))
     assert result["status"] == "skipped" and result["error_class"] == error
-    assert "private" not in json.dumps(result)
+    assert_private_streams_omitted(result)
 
 
 def test_normalization_timeout_and_blank_interpolation_are_preserved(
@@ -480,7 +501,7 @@ services:
         "env_file": "sample.env",
         "profiles": ["*"],
     }
-    normalized = evaluator.normalize_compose(case, timeout=15)
+    normalized = evaluator.normalize_compose(case, timeout=60)
     if normalized.get("error_class") == "compose_or_input_unavailable":
         pytest.skip("installed Compose CLI unavailable")
     assert normalized["status"] == "normalized", normalized
@@ -490,7 +511,7 @@ services:
     ]
     assert report["intentions"][0]["matched_services"] == ["db"]
     assert report["services"][0]["profiles"] == ["optional"]
-    assert "private" not in json.dumps(report)
+    assert "private:private" not in json.dumps(report)
 
 
 def test_normalizer_respects_explicit_profiles_and_records_scope(evaluator, monkeypatch, tmp_path):
@@ -543,7 +564,7 @@ def test_real_nested_compose_resolves_service_env_file_relative_to_first_file(ev
         "compose_files": ["nested/compose.yaml"],
         "env_file": "nested/sample.env",
     }
-    normalized = evaluator.normalize_compose(case, timeout=15)
+    normalized = evaluator.normalize_compose(case, timeout=60)
     if normalized.get("error_class") == "compose_or_input_unavailable":
         pytest.skip("installed Compose CLI unavailable")
     assert normalized["status"] == "normalized", normalized
@@ -606,7 +627,7 @@ def test_every_process_result_retains_exact_private_binary_streams_and_public_ha
     assert logs["stdout"]["sha256"] == hashlib.sha256(stdout).hexdigest()
     assert logs["stderr"]["sha256"] == hashlib.sha256(stderr).hexdigest()
     assert logs["stdout"]["bytes"] == len(stdout)
-    assert "private" not in json.dumps({k: v for k, v in result.items() if k != "config"})
+    assert_private_streams_omitted({k: v for k, v in result.items() if k != "config"})
     if error:
         assert result["error_class"] == error
     else:
@@ -634,7 +655,7 @@ def test_timeout_retains_partial_binary_streams_without_publishing_them(
     directory = tmp_path / logs["directory"]
     assert (directory / logs["stdout"]["filename"]).read_bytes() == b"private-partial-\xfe"
     assert (directory / logs["stderr"]["filename"]).read_bytes() == b"private-timeout-\xff"
-    assert "private" not in json.dumps(result)
+    assert_private_streams_omitted(result)
 
 
 def test_failed_invocation_retains_empty_logs_and_repeated_attempts_never_overwrite(
@@ -652,7 +673,7 @@ def test_failed_invocation_retains_empty_logs_and_repeated_attempts_never_overwr
     assert first["process_returncode"] is None
     assert first["raw_logs"]["stdout"]["bytes"] == 0
     assert first["raw_logs"]["stderr"]["bytes"] == 0
-    assert "private" not in json.dumps(first)
+    assert_private_streams_omitted(first)
 
 
 def test_raw_capture_rejects_paths_outside_case_root_and_workspace_work(

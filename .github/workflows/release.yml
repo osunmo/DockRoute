@@ -6,11 +6,23 @@ on:
 permissions:
   contents: read
 jobs:
+  release-identity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Enforce tag and package version agreement
+        run: |
+          python -c "import os, pathlib, runpy, tomllib; version=runpy.run_path('src/dockroute/__init__.py')['__version__']; package=tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version']; assert version==package, 'Package version mismatch'; assert os.environ.get('GITHUB_REF_TYPE')!='tag' or os.environ['GITHUB_REF_NAME']=='v'+version, 'Release tag does not match package version'"
   linux-evidence:
+    needs: release-identity
     uses: ./.github/workflows/diagnostic-accuracy.yml
     with:
       runs: 10
   binary:
+    needs: release-identity
     strategy:
       fail-fast: false
       matrix:
@@ -28,6 +40,13 @@ jobs:
       # Host correctness is tested natively; the worker targets Linux containers.
       - run: python -m mypy --explicit-package-bases --platform linux src/dockroute scripts/benchmark_latency.py scripts/benchmark_coldstart.py --check-untyped-defs --ignore-missing-imports
       - run: python scripts/build_binary.py --output outputs
+      - name: Verify the built CLI version
+        run: |
+          python -c "import pathlib, subprocess, sys; from dockroute import __version__; binary=pathlib.Path('outputs')/('dockroute.exe' if sys.platform=='win32' else 'dockroute'); actual=subprocess.check_output([str(binary), '--version'], text=True, timeout=60).strip(); assert actual=='DockRoute '+__version__, 'Built CLI version mismatch'"
+      - if: runner.os == 'Linux'
+        run: |
+          python -m build --outdir outputs
+          sha256sum outputs/*.whl outputs/dockroute-*.tar.gz > outputs/python-distributions.sha256
       - if: runner.os == 'Linux'
         run: dockroute-benchmark --binary ./outputs/dockroute --allow-fixed-ports --output outputs/benchmark.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -36,6 +55,7 @@ jobs:
           path: |
             outputs/*.zip
             outputs/*.tar.gz
+            outputs/*.whl
             outputs/*.sha256
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -54,5 +74,5 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         shell: bash
         run: |
-          mapfile -d '' assets < <(find artifacts -maxdepth 1 -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.sha256' \) -print0)
+          mapfile -d '' assets < <(find artifacts -maxdepth 1 -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.whl' -o -name '*.sha256' \) -print0)
           gh release create "$RELEASE_TAG" "${assets[@]}" --generate-notes --draft

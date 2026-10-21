@@ -3,13 +3,13 @@
 This round extends the first pinned evaluation after URI parsing, bounded log
 evidence, and mounted-configuration extractors are implemented. Those changes are
 developed against synthetic fixtures and the original 16 repositories. New source
-content remains hidden from the implementation agents until the product and the
+content remains hidden from the implementation contributors until the product and the
 files-only evaluator are frozen. The second round uses 12 new repositories;
 repository selection is deliberate, not a random sample of all Compose users.
 
 ## Registration and separation
 
-1. A custodian records the 12 canonical repository URLs, exact commit IDs and one
+1. A evaluation maintainer records the 12 canonical repository URLs, exact commit IDs and one
    Compose configuration per repository using only repository and filename
    metadata. The immutable selection includes failures; a difficult repository is
    never silently replaced. No file blobs are read before the implementation
@@ -17,11 +17,11 @@ repository selection is deliberate, not a random sample of all Compose users.
 2. Freeze every production module and evaluator file by SHA-256, Git revision,
    tool version, exact evaluation command and UTC timestamp. Changes after the
    freeze invalidate blind status for a rerun; retain the first run unchanged.
-3. After release, the custodian inspects pinned configuration and source consumers
+3. After source freeze, the evaluation maintainer inspects pinned configuration and source consumers
    and freezes a source-derived endpoint oracle before viewing predictions. Record
    each label's file, line, hash and reasoning. Label coverage is explicitly
    partial whenever application defaults, mounted files or other consumers have
-   not been completely inspected. Agent/source review is not independent human
+   not been completely inspected. Source review by an automated reviewer is not independent human
    validation.
 4. Normalize using Docker Compose with explicit inert sample environment inputs,
    not the operator's ambient secrets. Record the exact command, version, elapsed

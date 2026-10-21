@@ -50,6 +50,6 @@ git push origin v0.4.0
 ```
 
 The release workflow builds native binaries and creates a draft GitHub release.
-Attach the Linux regression evidence bundle to that draft; review it before
+The Linux regression evidence bundle is attached automatically; review it before
 publishing. Real-repository baseline evidence remains labeled with the version
 actually measured. No new blind accuracy claim follows from a synthetic pass.

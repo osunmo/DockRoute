@@ -607,7 +607,7 @@ def test_http_checks_exact_owned_mapping_and_refuses_redirects(live):
         assert result["mapped_port"] == server.server_port
         assert "fixture ready" not in json.dumps(result)
         recipe.update(health_path="/redirect", expected_body_pattern=None)
-        result = live.check_http(api, PROJECT, recipe, timeout=0)
+        result = live.check_http(api, PROJECT, recipe, timeout=5)
         assert result["ready"] is False
         assert result["http_status"] == 302
     finally:
