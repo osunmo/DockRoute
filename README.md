@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/dockroute-hero.svg" alt="DockRoute — Find the broken link. An illustrated Docker Compose service map highlighting network isolation." width="100%" />
+  <img src="dockroute-hero.svg" alt="DockRoute — Find the broken link. An illustrated Docker Compose service map highlighting network isolation." width="100%" />
 </p>
 
 <p align="center">
