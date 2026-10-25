@@ -1,14 +1,18 @@
 """Official Docker SDK boundary. Inspection operations are read-only."""
 
 import os
+import socket
+import stat
 import time
 from dataclasses import replace
+from urllib.parse import urlsplit
 
 import docker as sdk
 from docker.errors import DockerException, NotFound
 from requests.exceptions import RequestException
 
 from dockroute.compose import parse_labels
+from dockroute.endpoints import NPIPE_GUIDANCE
 from dockroute.models import Container, Network, Port
 
 
@@ -16,7 +20,128 @@ class DockerUnavailable(RuntimeError):
     pass
 
 
+def diagnose_socket_access(
+    socket_path: str | None = None,
+    *,
+    probe_timeout: float = 1.0,
+) -> str | None:
+    """Preflight reachability probe for Docker daemon.
+
+    Performs filesystem stat/permission validation and an active socket connection
+    probe to detect stopped (ECONNREFUSED) or unresponsive Docker daemons.
+    Returns an actionable error diagnosis message if unreachable, or None if healthy.
+    """
+    docker_host = os.environ.get("DOCKER_HOST", "").strip()
+    target_raw = (socket_path or "").strip() or docker_host
+
+    target_lower = target_raw.lower()
+    if (
+        target_lower.startswith("npipe://")
+        or target_lower.startswith("npipe:")
+        or target_lower.startswith(r"\\.\pipe")
+        or target_lower.startswith("//./pipe")
+    ):
+        return NPIPE_GUIDANCE
+
+    target_path = socket_path
+    if not target_path:
+        if docker_host.startswith("unix://"):
+            target_path = docker_host[7:]
+        elif docker_host.startswith("tcp://"):
+            target_path = docker_host
+        else:
+            candidates = [
+                "/var/run/docker.sock",
+                os.path.expanduser("~/.docker/run/docker.sock"),
+            ]
+            xdg = os.environ.get("XDG_RUNTIME_DIR")
+            if xdg:
+                candidates.insert(1, os.path.join(xdg, "docker.sock"))
+            target_path = next((p for p in candidates if os.path.exists(p)), candidates[0])
+
+    if target_path.startswith("tcp://"):
+        u = urlsplit(target_path)
+        host = u.hostname or "127.0.0.1"
+        port = u.port or 2375
+        try:
+            with socket.create_connection((host, port), timeout=probe_timeout):
+                return None
+        except ConnectionRefusedError:
+            return (
+                f"Docker daemon at {host}:{port} is stopped or not accepting connections "
+                "(connection refused). Start the Docker daemon and retry."
+            )
+        except (TimeoutError, socket.timeout):
+            return (
+                f"Connection to Docker daemon at {host}:{port} timed out after {probe_timeout:.1f}s. "
+                "The daemon may be hung or blocked by firewall."
+            )
+        except OSError as exc:
+            return f"Failed to connect to Docker daemon at {host}:{port}: {exc}"
+
+    if target_path.startswith("unix://"):
+        target_path = target_path[7:]
+
+    if not os.path.exists(target_path):
+        return (
+            f"Docker socket not found at '{target_path}'. "
+            "Ensure Docker Engine or Docker Desktop is installed and running."
+        )
+
+    try:
+        st = os.stat(target_path)
+        if not stat.S_ISSOCK(st.st_mode):
+            return f"Path '{target_path}' exists but is not a valid UNIX socket."
+    except OSError as exc:
+        return f"Cannot stat Docker socket at '{target_path}': {exc}"
+
+    if not os.access(target_path, os.R_OK | os.W_OK):
+        return (
+            f"Permission denied accessing Docker socket at '{target_path}'. "
+            f"Check file permissions or add your user to the 'docker' group (socket GID {st.st_gid})."
+        )
+
+    if hasattr(socket, "AF_UNIX"):
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.settimeout(probe_timeout)
+                s.connect(target_path)
+                return None
+        except ConnectionRefusedError:
+            return (
+                f"Docker socket exists at '{target_path}', but the Docker daemon is stopped "
+                "(connection refused). Start Docker Desktop/Engine ('systemctl start docker') and retry."
+            )
+        except (TimeoutError, socket.timeout):
+            return (
+                f"Connection to Docker socket '{target_path}' timed out after {probe_timeout:.1f}s. "
+                "The Docker daemon may be hung or unresponsive. Restart the daemon and retry."
+            )
+        except PermissionError:
+            return (
+                f"Permission denied while connecting to Docker socket '{target_path}'. "
+                "Check socket permissions or docker group membership."
+            )
+        except OSError as exc:
+            return f"Active connection probe to Docker socket '{target_path}' failed: {exc}"
+
+    return None
+
+
+# Alias for interoperability
+diagnoseSocketAccess = diagnose_socket_access
+
+
 def connect(*, timeout: float = 5) -> "Inspector":
+    docker_host = os.environ.get("DOCKER_HOST", "").strip().lower()
+    if (
+        docker_host.startswith("npipe://")
+        or docker_host.startswith("npipe:")
+        or docker_host.startswith(r"\\.\pipe")
+        or docker_host.startswith("//./pipe")
+    ):
+        raise DockerUnavailable(NPIPE_GUIDANCE)
+
     client = None
     try:
         # SDK 7.2+ honors DOCKER_CONTEXT/current Docker Desktop context as well as
@@ -31,6 +156,9 @@ def connect(*, timeout: float = 5) -> "Inspector":
     except (DockerException, RequestException, OSError, ValueError):
         if client:
             client.close()
+        diag = diagnose_socket_access(probe_timeout=min(2.0, timeout))
+        if diag:
+            raise DockerUnavailable(diag) from None
         # SDK exceptions can contain endpoint credentials, response bodies or keys.
         raise DockerUnavailable(
             "Docker Engine unavailable. Start Docker Desktop/Engine and check DOCKER_HOST, Docker context and socket permissions."

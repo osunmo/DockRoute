@@ -19,6 +19,33 @@ DEFAULT_PORTS = {
     "tcp": None,
 }
 
+NPIPE_GUIDANCE = (
+    "Windows Docker named pipes ('npipe://') are not directly supported. "
+    "Configure DOCKER_HOST='tcp://host.docker.internal:2375' (or 'tcp://127.0.0.1:2375') "
+    "or use the WSL2 Unix socket (/var/run/docker.sock)."
+)
+
+
+class UnsupportedSchemeError(ValueError):
+    """Raised when an endpoint scheme is unsupported with explicit guidance."""
+    pass
+
+
+def validate_endpoint_scheme(value: str) -> None:
+    """Validate endpoint scheme, raising UnsupportedSchemeError for npipe://."""
+    s = value.strip().lower()
+    if (
+        s.startswith("npipe://")
+        or s.startswith("npipe:")
+        or s.startswith(r"\\.\pipe")
+        or s.startswith("//./pipe")
+    ):
+        raise UnsupportedSchemeError(NPIPE_GUIDANCE)
+    if "://" in s:
+        scheme = s.partition("://")[0]
+        if scheme == "npipe":
+            raise UnsupportedSchemeError(NPIPE_GUIDANCE)
+
 
 def _network_scheme(scheme: str) -> str | None:
     """Normalize SQLAlchemy drivers and Celery's SQL result-backend wrapper."""
@@ -42,6 +69,7 @@ def parse_endpoint(value: str) -> tuple[str, int] | None:
     value = value.strip()
     if any(ord(c) < 32 for c in value):
         return None
+    validate_endpoint_scheme(value)
     try:
         u = urlsplit(value if "://" in value else "//" + value)
         scheme = _network_scheme(u.scheme) if u.scheme else ""
