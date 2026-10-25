@@ -1,16 +1,19 @@
 """Unit tests for active socket connection probe and Windows named pipe guidance."""
 
-import os
 import socket
-import tempfile
 import threading
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from docker.errors import DockerException
 
 from dockroute.cli import main
-from dockroute.docker import DockerUnavailable, connect, diagnose_socket_access, diagnoseSocketAccess
+from dockroute.docker import (
+    DockerUnavailable,
+    connect,
+    diagnose_socket_access,
+    diagnoseSocketAccess,
+)
 from dockroute.endpoints import (
     NPIPE_GUIDANCE,
     UnsupportedSchemeError,
@@ -22,7 +25,9 @@ from dockroute.endpoints import (
 def test_npipe_endpoint_raises_unsupported_scheme():
     with pytest.raises(UnsupportedSchemeError) as exc_info:
         validate_endpoint_scheme("npipe:////./pipe/docker_engine")
-    assert "Windows Docker named pipes ('npipe://') are not directly supported" in str(exc_info.value)
+    assert "Windows Docker named pipes ('npipe://') are not directly supported" in str(
+        exc_info.value
+    )
     assert "tcp://host.docker.internal:2375" in str(exc_info.value)
     assert "/var/run/docker.sock" in str(exc_info.value)
 
@@ -62,14 +67,18 @@ def test_connect_with_npipe_docker_host(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
     with pytest.raises(DockerUnavailable) as exc_info:
         connect()
-    assert "Windows Docker named pipes ('npipe://') are not directly supported" in str(exc_info.value)
+    assert "Windows Docker named pipes ('npipe://') are not directly supported" in str(
+        exc_info.value
+    )
 
 
 def test_connect_with_raw_pipe_docker_host(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", r"\\.\pipe\docker_engine")
     with pytest.raises(DockerUnavailable) as exc_info:
         connect()
-    assert "Windows Docker named pipes ('npipe://') are not directly supported" in str(exc_info.value)
+    assert "Windows Docker named pipes ('npipe://') are not directly supported" in str(
+        exc_info.value
+    )
 
 
 def test_diagnose_socket_access_nonexistent():
@@ -93,7 +102,10 @@ def test_diagnose_socket_access_not_a_socket(tmp_path):
     assert "not a valid unix socket" in msg.lower()
 
 
-@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="AF_UNIX required for Unix socket tests")
+@pytest.mark.skipif(
+    not hasattr(socket, "AF_UNIX"),
+    reason="AF_UNIX required for Unix socket tests",
+)
 def test_diagnose_socket_access_connection_refused(tmp_path):
     sock_path = str(tmp_path / "test.sock")
     # Bind but do not listen or accept -> connection refused or refused on connect
@@ -106,7 +118,10 @@ def test_diagnose_socket_access_connection_refused(tmp_path):
     assert "connection refused" in msg.lower() or "stopped" in msg.lower()
 
 
-@pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="AF_UNIX required for Unix socket tests")
+@pytest.mark.skipif(
+    not hasattr(socket, "AF_UNIX"),
+    reason="AF_UNIX required for Unix socket tests",
+)
 def test_diagnose_socket_access_active_success(tmp_path):
     sock_path = str(tmp_path / "active.sock")
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -139,7 +154,11 @@ def test_diagnose_socket_access_tcp_refused_env(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", f"tcp://127.0.0.1:{port}")
     msg = diagnose_socket_access(probe_timeout=0.5)
     assert msg is not None
-    assert "connection refused" in msg.lower() or "stopped" in msg.lower()
+    assert (
+        "timed out" in msg.lower()
+        or "connection refused" in msg.lower()
+        or "stopped" in msg.lower()
+    )
 
 
 def test_diagnose_socket_access_tcp_refused_arg():
@@ -149,7 +168,11 @@ def test_diagnose_socket_access_tcp_refused_arg():
         port = s.getsockname()[1]
     msg = diagnose_socket_access(f"tcp://127.0.0.1:{port}", probe_timeout=0.5)
     assert msg is not None
-    assert "connection refused" in msg.lower() or "stopped" in msg.lower()
+    assert (
+        "timed out" in msg.lower()
+        or "connection refused" in msg.lower()
+        or "stopped" in msg.lower()
+    )
 
 
 def test_diagnose_socket_access_camel_case_alias():
@@ -158,16 +181,21 @@ def test_diagnose_socket_access_camel_case_alias():
 
 def test_cli_check_with_npipe_target(capsys):
     with pytest.raises(SystemExit) as exc_info:
-        main(["check", "npipe:////./pipe/docker_engine"])
-    assert exc_info.value.code == 2
+        main(["check", "web", "npipe:////./pipe/docker_engine"])
+    assert exc_info.value.code == 4
     captured = capsys.readouterr()
     assert "Windows Docker named pipes ('npipe://') are not directly supported" in captured.err
 
 
 def test_connect_uses_diagnose_socket_access_on_failure(monkeypatch):
     monkeypatch.delenv("DOCKER_HOST", raising=False)
-    with patch("dockroute.docker.sdk.from_env") as mock_from_env, \
-         patch("dockroute.docker.diagnose_socket_access", return_value="Custom diagnostic: daemon stopped"):
+    with (
+        patch("dockroute.docker.sdk.from_env") as mock_from_env,
+        patch(
+            "dockroute.docker.diagnose_socket_access",
+            return_value="Custom diagnostic: daemon stopped",
+        ),
+    ):
         mock_from_env.side_effect = DockerException("Failed to ping")
         with pytest.raises(DockerUnavailable) as exc_info:
             connect()

@@ -162,9 +162,18 @@ def main(argv: list[str] | None = None) -> int:
     args = root.parse_args(argv)
     endpoint = None
     if args.command == "check":
+        from dockroute.endpoints import (
+            UnsupportedSchemeError,
+            parse_endpoint,
+            validate_endpoint_scheme,
+        )
+
+        try:
+            validate_endpoint_scheme(args.target)
+        except UnsupportedSchemeError as exc:
+            root.error(str(exc))
         if any(x in args.target for x in ("/", "@", "?", "#")):
             root.error("target must be HOST:PORT without credentials or a URL path")
-        from dockroute.endpoints import parse_endpoint
 
         endpoint = parse_endpoint(args.target)
         if not endpoint:
