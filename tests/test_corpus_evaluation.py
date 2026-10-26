@@ -31,6 +31,15 @@ def assert_private_streams_omitted(value):
         assert marker not in rendered
 
 
+def test_private_stream_assertion_ignores_macos_private_paths():
+    assert_private_streams_omitted(
+        {
+            "raw_logs": {"directory": "/private/var/folders/example/case-001"},
+            "command_argv": ["--project-directory", "/private/var/folders/example/project"],
+        }
+    )
+
+
 @pytest.fixture
 def evaluator():
     path = Path(__file__).resolve().parents[1] / "scripts" / "evaluate_corpus.py"
