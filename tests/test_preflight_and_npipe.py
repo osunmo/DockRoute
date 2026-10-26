@@ -1,5 +1,6 @@
 """Unit tests for active socket connection probe and Windows named pipe guidance."""
 
+import os
 import socket
 import threading
 from unittest.mock import patch
@@ -108,14 +109,25 @@ def test_diagnose_socket_access_not_a_socket(tmp_path):
 )
 def test_diagnose_socket_access_connection_refused(tmp_path):
     sock_path = str(tmp_path / "test.sock")
-    # Bind but do not listen or accept -> connection refused or refused on connect
+    # macOS limits AF_UNIX paths to 104 characters; fallback to /tmp if pytest tmp_path is too long
+    if len(sock_path) > 90 and os.path.exists("/tmp"):
+        sock_path = f"/tmp/dr_{os.getpid()}_refused.sock"
+    if os.path.exists(sock_path):
+        os.remove(sock_path)
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    server.bind(sock_path)
-    server.close()
-    # Now sock_path exists as a socket file, but no daemon is listening!
-    msg = diagnose_socket_access(sock_path, probe_timeout=0.5)
-    assert msg is not None
-    assert "connection refused" in msg.lower() or "stopped" in msg.lower()
+    try:
+        server.bind(sock_path)
+        server.close()
+        # Now sock_path exists as a socket file, but no daemon is listening!
+        msg = diagnose_socket_access(sock_path, probe_timeout=0.5)
+        assert msg is not None
+        assert "connection refused" in msg.lower() or "stopped" in msg.lower()
+    finally:
+        if os.path.exists(sock_path):
+            try:
+                os.remove(sock_path)
+            except OSError:
+                pass
 
 
 @pytest.mark.skipif(
@@ -124,6 +136,11 @@ def test_diagnose_socket_access_connection_refused(tmp_path):
 )
 def test_diagnose_socket_access_active_success(tmp_path):
     sock_path = str(tmp_path / "active.sock")
+    # macOS limits AF_UNIX paths to 104 characters; fallback to /tmp if pytest tmp_path is too long
+    if len(sock_path) > 90 and os.path.exists("/tmp"):
+        sock_path = f"/tmp/dr_{os.getpid()}_active.sock"
+    if os.path.exists(sock_path):
+        os.remove(sock_path)
     server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     server.bind(sock_path)
     server.listen(1)
@@ -144,6 +161,11 @@ def test_diagnose_socket_access_active_success(tmp_path):
     finally:
         server.close()
         t.join(timeout=1.0)
+        if os.path.exists(sock_path):
+            try:
+                os.remove(sock_path)
+            except OSError:
+                pass
 
 
 def test_diagnose_socket_access_tcp_refused_env(monkeypatch):

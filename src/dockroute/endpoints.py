@@ -28,6 +28,7 @@ NPIPE_GUIDANCE = (
 
 class UnsupportedSchemeError(ValueError):
     """Raised when an endpoint scheme is unsupported with explicit guidance."""
+
     pass
 
 
