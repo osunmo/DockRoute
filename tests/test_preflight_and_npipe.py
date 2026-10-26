@@ -2,6 +2,7 @@
 
 import os
 import socket
+import sys
 import threading
 from unittest.mock import MagicMock, patch
 
@@ -51,23 +52,25 @@ def test_parse_endpoint_with_npipe():
 
 def test_diagnose_socket_access_npipe_env(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
-    msg = diagnose_socket_access()
-    assert msg is not None
-    assert "docker_engine" in msg
-    assert "not found" in msg.lower()
+    with patch("dockroute.docker._pipe_exists", return_value=False):
+        msg = diagnose_socket_access()
+        assert msg is not None
+        assert "docker_engine" in msg
+        assert "not found" in msg.lower()
 
 
 def test_diagnose_socket_access_npipe_argument():
     # Calling directly with npipe:// argument even if DOCKER_HOST is unset
-    msg = diagnose_socket_access("npipe:////./pipe/docker_engine")
-    assert msg is not None
-    assert "docker_engine" in msg
-    assert "not found" in msg.lower()
+    with patch("dockroute.docker._pipe_exists", return_value=False):
+        msg = diagnose_socket_access("npipe:////./pipe/docker_engine")
+        assert msg is not None
+        assert "docker_engine" in msg
+        assert "not found" in msg.lower()
 
-    msg2 = diagnose_socket_access(r"\\.\pipe\docker_engine")
-    assert msg2 is not None
-    assert "docker_engine" in msg2
-    assert "not found" in msg2.lower()
+        msg2 = diagnose_socket_access(r"\\.\pipe\docker_engine")
+        assert msg2 is not None
+        assert "docker_engine" in msg2
+        assert "not found" in msg2.lower()
 
 
 def test_connect_with_npipe_docker_host(monkeypatch):
@@ -92,7 +95,10 @@ def test_connect_with_raw_pipe_docker_host(monkeypatch):
 
 def test_connect_with_npipe_docker_host_stopped(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
-    with patch("dockroute.docker.sdk.from_env") as mock_from_env:
+    with (
+        patch("dockroute.docker.sdk.from_env") as mock_from_env,
+        patch("dockroute.docker._pipe_exists", return_value=False),
+    ):
         mock_from_env.side_effect = DockerException("CreateFile failed")
         with pytest.raises(DockerUnavailable) as exc_info:
             connect()
@@ -242,6 +248,7 @@ def test_connect_uses_diagnose_socket_access_on_failure(monkeypatch):
         assert "Custom diagnostic: daemon stopped" in str(exc_info.value)
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows named pipes only")
 def test_diagnose_socket_access_npipe_busy_treated_as_healthy(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
     with (
@@ -252,6 +259,7 @@ def test_diagnose_socket_access_npipe_busy_treated_as_healthy(monkeypatch):
         assert msg is None
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows named pipes only")
 def test_diagnose_socket_access_npipe_access_denied(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
     with (
