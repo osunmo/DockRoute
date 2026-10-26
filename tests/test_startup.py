@@ -50,6 +50,32 @@ except SystemExit as exc:
 """
 
 
+ISOLATED_PACKAGE_IMPORT = r"""
+import importlib.abc
+import sys
+
+root = sys.argv[1]
+sys.path.insert(0, root + '/src')
+
+forbidden = {'docker', 'requests', 'yaml'}
+
+def forbidden_name(name):
+    return any(name == prefix or name.startswith(prefix + '.') for prefix in forbidden)
+
+assert not any(forbidden_name(name) for name in sys.modules)
+
+class ImportGuard(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if forbidden_name(fullname):
+            raise AssertionError('Top-level package import pulled runtime dependency: ' + fullname)
+
+sys.meta_path.insert(0, ImportGuard())
+import dockroute
+assert dockroute.__version__
+assert not any(forbidden_name(name) for name in sys.modules)
+"""
+
+
 @pytest.mark.parametrize("entrypoint", ["module", "script", "console"])
 @pytest.mark.parametrize(
     "arguments, output",
@@ -90,6 +116,28 @@ def test_argument_errors_precede_diagnostic_imports(entrypoint, arguments, error
     assert error in result.stderr
     assert "secret" not in result.stdout + result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_top_level_package_import_remains_startup_light():
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", ISOLATED_PACKAGE_IMPORT, str(ROOT)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+
+
+def test_root_exports_retain_lazy_docker_aliases():
+    from dockroute import DockerUnavailable, diagnose_socket_access, diagnoseSocketAccess
+    from dockroute import docker as docker_module
+
+    assert DockerUnavailable is docker_module.DockerUnavailable
+    assert diagnose_socket_access is docker_module.diagnose_socket_access
+    assert diagnoseSocketAccess is docker_module.diagnoseSocketAccess
 
 
 def isolated_cli(entrypoint, arguments):
