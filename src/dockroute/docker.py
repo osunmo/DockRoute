@@ -3,6 +3,7 @@
 import os
 import socket
 import stat
+import sys
 import time
 from dataclasses import replace
 from urllib.parse import urlsplit
@@ -12,12 +13,88 @@ from docker.errors import DockerException, NotFound
 from requests.exceptions import RequestException
 
 from dockroute.compose import parse_labels
-from dockroute.endpoints import NPIPE_GUIDANCE
 from dockroute.models import Container, Network, Port
 
 
 class DockerUnavailable(RuntimeError):
     pass
+
+
+def _normalize_npipe_path(target: str) -> str:
+    path = target.strip()
+    if path.lower().startswith("npipe://"):
+        path = path[8:]
+    elif path.lower().startswith("npipe:"):
+        path = path[6:]
+    path = path.replace("/", "\\")
+    if not path.startswith("\\\\"):
+        path = "\\\\.\\" + path.lstrip("\\.")
+    return path
+
+
+def _pipe_exists(path: str) -> bool:
+    try:
+        import win32pipe
+
+        try:
+            win32pipe.WaitNamedPipe(path, 1)
+            return True
+        except Exception as e:
+            winerror = getattr(e, "winerror", None) or (
+                e.args[0] if e.args and isinstance(e.args[0], int) else None
+            )
+            if winerror in (2, 3):
+                return False
+            return True
+    except ImportError:
+        try:
+            os.stat(path)
+            return True
+        except OSError as e:
+            if getattr(e, "winerror", None) in (231, 5):
+                return True
+            return False
+
+
+def _probe_named_pipe(pipe_path: str) -> str | None:
+    if not _pipe_exists(pipe_path):
+        return (
+            f"Docker named pipe not found at '{pipe_path}'. "
+            "Ensure Docker Desktop is installed and running."
+        )
+    try:
+        import win32file
+
+        handle = win32file.CreateFile(
+            pipe_path,
+            win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+            0,
+            None,
+            win32file.OPEN_EXISTING,
+            0,
+            0,
+        )
+        win32file.CloseHandle(handle)
+        return None
+    except ImportError:
+        return None
+    except Exception as exc:
+        winerror = getattr(exc, "winerror", None) or (
+            exc.args[0] if exc.args and isinstance(exc.args[0], int) else None
+        )
+        if winerror == 231:
+            return None
+        if winerror == 5:
+            return (
+                f"Access denied to Docker named pipe at '{pipe_path}'. "
+                "Check permissions or run as administrator."
+            )
+        if winerror in (2, 3):
+            return (
+                f"Docker named pipe not found at '{pipe_path}'. "
+                "Ensure Docker Desktop is installed and running."
+            )
+        return f"Failed to connect to Docker named pipe at '{pipe_path}': {exc}"
 
 
 def diagnose_socket_access(
@@ -27,21 +104,33 @@ def diagnose_socket_access(
 ) -> str | None:
     """Preflight reachability probe for Docker daemon.
 
-    Performs filesystem stat/permission validation and an active socket connection
-    probe to detect stopped (ECONNREFUSED) or unresponsive Docker daemons.
+    Performs filesystem stat/permission validation, Windows named pipe existence/access checks,
+    and active socket connection probes to detect stopped or unresponsive Docker daemons.
     Returns an actionable error diagnosis message if unreachable, or None if healthy.
     """
     docker_host = os.environ.get("DOCKER_HOST", "").strip()
     target_raw = (socket_path or "").strip() or docker_host
+    if not target_raw and not socket_path:
+        try:
+            from docker.context import ContextAPI
+
+            ctx_params = ContextAPI.kwargs_from_context()
+            if "base_url" in ctx_params:
+                target_raw = ctx_params["base_url"]
+        except Exception:
+            pass
 
     target_lower = target_raw.lower()
-    if (
+    is_npipe = (
         target_lower.startswith("npipe://")
         or target_lower.startswith("npipe:")
         or target_lower.startswith(r"\\.\pipe")
         or target_lower.startswith("//./pipe")
-    ):
-        return NPIPE_GUIDANCE
+    )
+
+    if is_npipe:
+        pipe_path = _normalize_npipe_path(target_raw)
+        return _probe_named_pipe(pipe_path)
 
     target_path = socket_path
     if not target_path:
@@ -49,6 +138,15 @@ def diagnose_socket_access(
             target_path = docker_host[7:]
         elif docker_host.startswith("tcp://"):
             target_path = docker_host
+        elif target_raw.startswith("tcp://"):
+            target_path = target_raw
+        elif sys.platform == "win32":
+            candidates = [
+                r"\\.\pipe\docker_engine",
+                r"\\.\pipe\dockerDesktopLinuxEngine",
+            ]
+            pipe_path = next((p for p in candidates if _pipe_exists(p)), candidates[0])
+            return _probe_named_pipe(pipe_path)
         else:
             candidates = [
                 "/var/run/docker.sock",
@@ -133,15 +231,6 @@ diagnoseSocketAccess = diagnose_socket_access
 
 
 def connect(*, timeout: float = 5) -> "Inspector":
-    docker_host = os.environ.get("DOCKER_HOST", "").strip().lower()
-    if (
-        docker_host.startswith("npipe://")
-        or docker_host.startswith("npipe:")
-        or docker_host.startswith(r"\\.\pipe")
-        or docker_host.startswith("//./pipe")
-    ):
-        raise DockerUnavailable(NPIPE_GUIDANCE)
-
     client = None
     try:
         # SDK 7.2+ honors DOCKER_CONTEXT/current Docker Desktop context as well as

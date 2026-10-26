@@ -7,9 +7,12 @@ Automatic root-cause recall on four validated faults injected into real projects
 was **1/4 static and 2/4 active**.
 
 These measurements used DockRoute 0.3.0. They must not be relabeled as 0.4
-results. Version 0.4 has parser and evidence-source changes but no new blind
-accuracy result. [baseline.json](../benchmarks/baseline.json) retains the small,
-versioned baseline and hashes of its original summary records.
+or 0.4.1 results. Version 0.4.1 includes preflight reachability probing,
+Windows named pipe support, parser improvements, and evidence-source changes,
+but no new blind accuracy result. [baseline.json](../benchmarks/baseline.json) retains
+the small, versioned baseline and hashes of its original summary records.
+
+Third-party replay: not yet done.
 
 ## Known limitations and interpretation
 

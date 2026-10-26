@@ -114,8 +114,8 @@ python scripts/benchmark_accuracy.py --scenario YOUR_FOLDER --runs 10 --output o
 ## Evidence and public compatibility
 
 Diagnostics must separate intention, observation, explanation, confidence and
-remediation. Prefer UNKNOWN to an unsupported cause. TCP refusal does not prove
-a bind-address issue; TCP success does not prove application readiness.
+remediation. Prefer UNKNOWN to an unsupported cause. TCP refusal does not establish
+a bind-address issue; TCP success does not establish application readiness.
 Destination-side evidence is required for loopback-only listeners.
 
 Every code has [its own reference entry](docs/diagnostics.md). Schema 3.0 is the

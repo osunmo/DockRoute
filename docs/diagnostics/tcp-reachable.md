@@ -12,8 +12,8 @@ api accepts TCP on port 8000 even when its HTTP response is 500 or 503.
 
 No network remediation is indicated by these checks; validate the application protocol separately.
 
-## What it does not prove
+## What it does not establish
 
-It does not prove HTTP readiness, authentication, TLS, database readiness, correct application responses or lasting availability.
+It does not establish HTTP readiness, authentication, TLS, database readiness, correct application responses or lasting availability.
 
 [All diagnostic codes](../diagnostics.md) Â· [JSON contract](../json-output.md)

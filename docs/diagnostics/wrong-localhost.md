@@ -12,8 +12,8 @@ backend DATABASE_URL uses localhost:5432 while its only relevant dependency is d
 
 Use the destination service name and container port when the intended server is another container.
 
-## What it does not prove
+## What it does not establish
 
-Loopback can be intentional. A listener/public-origin/advertised address is not automatically a client endpoint; dependency evidence does not prove traffic.
+Loopback can be intentional. A listener/public-origin/advertised address is not automatically a client endpoint; dependency evidence does not establish traffic.
 
 [All diagnostic codes](../diagnostics.md) Â· [JSON contract](../json-output.md)

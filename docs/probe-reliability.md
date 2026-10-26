@@ -4,7 +4,7 @@
 
 The 0.1 failure was reproduced intermittently from both the source CLI and Windows standalone executable on Docker Desktop, Engine 29.8.1 and Compose 5.5.1. Instrumentation captured `helper.wait(timeout=6)` raising `ConnectionError` after **6.031 seconds**, followed immediately by inspection reporting `Status=exited`, `ExitCode=0` and empty worker stderr. Successful healthy helper waits in that trace ranged roughly **3.3–5.7 seconds**.
 
-The six-second deadline included helper/Python startup and Engine completion response transport. A timed-out response did not prove worker failure. The old broad exception handler discarded the completed worker output, returned DNS/TCP unknown and represented an unperformed resolver comparison as false. This was the observed route to the generic UNKNOWN report. The measurements do not establish why Docker Desktop delayed that response, nor prove CPU throttling or network failure.
+The six-second deadline included helper/Python startup and Engine completion response transport. A timed-out response did not establish worker failure. The old broad exception handler discarded the completed worker output, returned DNS/TCP unknown and represented an unperformed resolver comparison as false. This was the observed route to the generic UNKNOWN report. The measurements do not establish why Docker Desktop delayed that response, nor establish CPU throttling or network failure.
 
 The original frozen worker exactly matched source (4449 bytes, SHA256 `d2d5934d855ec096477e88da33dd5b6e4e49e8bdbf001821af458f0b29842b14`) and compiled. Successful real standalone probes also demonstrated working Linux worker injection. No PowerShell quoting is used: Docker SDK receives an entrypoint array and a JSON argument.
 

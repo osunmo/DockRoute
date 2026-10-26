@@ -3,7 +3,7 @@
 import os
 import socket
 import threading
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from docker.errors import DockerException
@@ -52,34 +52,52 @@ def test_parse_endpoint_with_npipe():
 def test_diagnose_socket_access_npipe_env(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
     msg = diagnose_socket_access()
-    assert msg == NPIPE_GUIDANCE
+    assert msg is not None
+    assert "docker_engine" in msg
+    assert "not found" in msg.lower()
 
 
 def test_diagnose_socket_access_npipe_argument():
     # Calling directly with npipe:// argument even if DOCKER_HOST is unset
     msg = diagnose_socket_access("npipe:////./pipe/docker_engine")
-    assert msg == NPIPE_GUIDANCE
+    assert msg is not None
+    assert "docker_engine" in msg
+    assert "not found" in msg.lower()
 
     msg2 = diagnose_socket_access(r"\\.\pipe\docker_engine")
-    assert msg2 == NPIPE_GUIDANCE
+    assert msg2 is not None
+    assert "docker_engine" in msg2
+    assert "not found" in msg2.lower()
 
 
 def test_connect_with_npipe_docker_host(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
-    with pytest.raises(DockerUnavailable) as exc_info:
-        connect()
-    assert "Windows Docker named pipes ('npipe://') are not directly supported" in str(
-        exc_info.value
-    )
+    with patch("dockroute.docker.sdk.from_env") as mock_from_env:
+        mock_client = MagicMock()
+        mock_from_env.return_value = mock_client
+        inspector = connect()
+        assert inspector is not None
+        mock_client.ping.assert_called_once()
 
 
 def test_connect_with_raw_pipe_docker_host(monkeypatch):
     monkeypatch.setenv("DOCKER_HOST", r"\\.\pipe\docker_engine")
-    with pytest.raises(DockerUnavailable) as exc_info:
-        connect()
-    assert "Windows Docker named pipes ('npipe://') are not directly supported" in str(
-        exc_info.value
-    )
+    with patch("dockroute.docker.sdk.from_env") as mock_from_env:
+        mock_client = MagicMock()
+        mock_from_env.return_value = mock_client
+        inspector = connect()
+        assert inspector is not None
+        mock_client.ping.assert_called_once()
+
+
+def test_connect_with_npipe_docker_host_stopped(monkeypatch):
+    monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
+    with patch("dockroute.docker.sdk.from_env") as mock_from_env:
+        mock_from_env.side_effect = DockerException("CreateFile failed")
+        with pytest.raises(DockerUnavailable) as exc_info:
+            connect()
+        assert "docker_engine" in str(exc_info.value)
+        assert "not found" in str(exc_info.value).lower()
 
 
 def test_diagnose_socket_access_nonexistent():
@@ -222,3 +240,36 @@ def test_connect_uses_diagnose_socket_access_on_failure(monkeypatch):
         with pytest.raises(DockerUnavailable) as exc_info:
             connect()
         assert "Custom diagnostic: daemon stopped" in str(exc_info.value)
+
+
+def test_diagnose_socket_access_npipe_busy_treated_as_healthy(monkeypatch):
+    monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
+    with (
+        patch("dockroute.docker._pipe_exists", return_value=True),
+        patch("win32file.CreateFile", side_effect=OSError(231, "All pipe instances are busy")),
+    ):
+        msg = diagnose_socket_access()
+        assert msg is None
+
+
+def test_diagnose_socket_access_npipe_access_denied(monkeypatch):
+    monkeypatch.setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
+    with (
+        patch("dockroute.docker._pipe_exists", return_value=True),
+        patch("win32file.CreateFile", side_effect=OSError(5, "Access is denied")),
+    ):
+        msg = diagnose_socket_access()
+        assert msg is not None
+        assert "Access denied" in msg
+
+
+def test_diagnose_socket_access_uses_docker_context(monkeypatch):
+    monkeypatch.delenv("DOCKER_HOST", raising=False)
+    mock_ctx = {"base_url": "npipe:////./pipe/dockerDesktopLinuxEngine"}
+    with (
+        patch("docker.context.ContextAPI.kwargs_from_context", return_value=mock_ctx),
+        patch("dockroute.docker._pipe_exists", return_value=False),
+    ):
+        msg = diagnose_socket_access()
+        assert msg is not None
+        assert "dockerDesktopLinuxEngine" in msg

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+- Add active daemon preflight reachability probe for Unix sockets and Windows named pipes (`npipe://`).
+- Fix Windows Docker Desktop named pipe connection handling in `connect()` and socket diagnosis.
+- Isolate startup CLI imports, align package release metadata, and enhance diagnostic boundaries documentation.
+- Third-party replay: not yet done.
+
 ## 0.4.0
 
 - Rename the successful active diagnosis from `HEALTHY` to

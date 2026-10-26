@@ -42,7 +42,16 @@ No account. No LLM API. No changes to your application containers.
 <a id="quickstart"></a>
 ## ⚡ Quickstart
 
-**Requirements:** Python 3.11+ and access to Docker Engine. Install from source:
+**Requirements:** Python 3.11+ and access to Docker Engine.
+
+Install using `pipx`:
+
+```sh
+pipx install git+https://github.com/osunmo/DockRoute.git
+dockroute --version
+```
+
+Or install from source:
 
 ```sh
 python -m pip install .
@@ -131,7 +140,7 @@ In 0.4, bounded mounted-config support covers **Nginx, Prometheus, and Envoy**, 
 <a id="measured-results"></a>
 ## ◈ Measured results
 
-**Evidence over inflated claims.** The latest blind real-repository evaluation used **DockRoute 0.3.0**, not the 0.4 release candidate:
+**Evidence over inflated claims.** The latest blind real-repository evaluation used **DockRoute 0.3.0**, not DockRoute 0.4.1:
 
 | Metric | Recorded result |
 |:--|--:|
@@ -141,6 +150,8 @@ In 0.4, bounded mounted-config support covers **Nginx, Prometheus, and Envoy**, 
 | Root-cause recall · 4 real-project injected faults | **1/4 static · 2/4 active** |
 
 These numbers come from **agent source reviews with partial oracle coverage and unreviewed predictions**. They are **not independently human-validated**, do not estimate population-wide accuracy, and do not establish the accuracy of 0.4 changes. Read the [evaluation method](docs/corpus-evaluation.md) and [small historical baseline](benchmarks/baseline.json).
+
+Third-party replay: not yet done.
 
 The [synthetic scenario suite](docs/diagnostic-accuracy.md) is a **regression harness**. Repeated passes establish that specific implemented behaviors keep working; they are **not real-project accuracy scores**.
 
@@ -154,7 +165,7 @@ The [synthetic scenario suite](docs/diagnostic-accuracy.md) is a **regression ha
 | Confirm `TCP_REACHABLE` through a supported active check | Verify HTTP status, database authentication, TLS, or application readiness from TCP success |
 | Return `UNKNOWN` when evidence is ambiguous | Turn a clean report into proof that the entire application is healthy |
 
-Resolver-file comparisons help attribute evidence but do not prove equivalence with the application's resolver. `LOOPBACK_ONLY_LISTENER` requires destination-listener evidence. Docker metadata and healthchecks alone cannot produce `TCP_REACHABLE`.
+Resolver-file comparisons help attribute evidence but do not establish equivalence with the application's resolver. `LOOPBACK_ONLY_LISTENER` requires destination-listener evidence. Docker metadata and healthchecks alone cannot produce `TCP_REACHABLE`.
 
 <a id="active-probes--safety"></a>
 ## ⛨ Active probes & safety

@@ -13,7 +13,7 @@ separately. `UNKNOWN` is an abstention, never a successful root-cause prediction
 | Fixture | Validated behavior | Static expected | Active expected / boundary |
 | --- | --- | --- | --- |
 | Missing hostname | missing name fails DNS; real service works | INVALID_SERVICE_HOSTNAME | same; manual DNS_FAILURE is a separate observation |
-| Wrong port | actual port accepts TCP; configured wrong port refuses | UNKNOWN | CONNECTION_REFUSED; does not prove why |
+| Wrong port | actual port accepts TCP; configured wrong port refuses | UNKNOWN | CONNECTION_REFUSED; does not establish why |
 | Host port confusion | host-published port differs from container port | HOST_PORT_INSTEAD_OF_CONTAINER_PORT | same, supported by mapping evidence |
 | HTTP 500 | TCP accepts; HTTP returns 500 | UNKNOWN | TCP_REACHABLE; application readiness untested |
 | HTTP 503 | TCP accepts; HTTP returns 503 | UNKNOWN | TCP_REACHABLE; application readiness untested |

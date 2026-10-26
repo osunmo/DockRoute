@@ -1,4 +1,4 @@
-# Known Issues in DockRoute 0.4.0
+# Known Issues in DockRoute 0.4.1
 
 This document tracks known limitations, design anomalies, and open investigation areas identified during DockRoute 0.4 evaluation.
 
@@ -52,12 +52,18 @@ This document tracks known limitations, design anomalies, and open investigation
 
 ---
 
-### 9. Windows Docker named pipes (`npipe://`) not supported for helper probing
+### 9. Windows Docker named pipes (`npipe://`) endpoint support
 
-**Description:** On Windows hosts running Docker Desktop with Windows containers or native named pipe endpoints (`npipe:////./pipe/docker_engine`), DockRoute's active probing cannot spawn Linux helper containers attached to Windows named pipes. Users must expose the daemon over TCP (`tcp://host.docker.internal:2375` or `tcp://127.0.0.1:2375`) or use Docker within WSL2 with standard Unix socket mounts (`/var/run/docker.sock`).
+**Description:** On Windows hosts running Docker Desktop with default named pipe endpoints (`npipe:////./pipe/docker_engine`), DockRoute 0.4.1 natively connects to the Docker daemon via the Docker SDK and performs active named pipe reachability preflight probing. Note that service check targets (`dockroute check <service> <target>`) reject named pipes as inter-container service targets, since containers communicate across bridge networks via TCP/UDP rather than host named pipes.
 
 ---
 
 ### 10. Static filesystem checks alone miss stopped or hung Docker daemons
 
 **Description:** Filesystem-only socket inspection (`stat()` and `access()`) reports that `/var/run/docker.sock` is accessible even when the daemon process has terminated or crashed, leading to unhandled connection exceptions. DockRoute 0.4.1 adds active socket connection preflight probing with short timeouts to catch `ECONNREFUSED` and unresponsiveness with explicit, actionable remediation guidance.
+
+---
+
+### 11. CI Matrix job count (13 vs 14) accounting
+
+**Description:** The Linux generalization CI matrix comprises 13 project jobs plus 1 manifest registration job (14 total workflow jobs), while the core CI workflow contains 12 matrix jobs plus 1 standalone scenarios job and 1 accuracy workflow call job (14 total jobs). Historical references to 13 jobs counted project evaluation runs without the orchestrating registration step.

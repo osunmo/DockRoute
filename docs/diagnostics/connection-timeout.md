@@ -12,8 +12,8 @@ A resolved destination address produces no completed TCP handshake before the de
 
 Inspect current network reachability, filtering, listener/service state and the reported deadlines.
 
-## What it does not prove
+## What it does not establish
 
-It does not identify the dropping component or prove network isolation. A slow or overloaded environment can also exhaust a deadline.
+It does not identify the dropping component or establish network isolation. A slow or overloaded environment can also exhaust a deadline.
 
 [All diagnostic codes](../diagnostics.md) Â· [JSON contract](../json-output.md)

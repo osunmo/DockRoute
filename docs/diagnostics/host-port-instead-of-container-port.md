@@ -12,8 +12,8 @@ db publishes 15432:5432; app targets db:15432.
 
 Use db:5432 for traffic within the Compose network; retain 15432 for host clients.
 
-## What it does not prove
+## What it does not establish
 
-Port mapping is configuration evidence, not proof that the container has no other listener or that it caused the observed outage.
+Port mapping is configuration evidence, not evidence that the container has no other listener or that it caused the observed outage.
 
 [All diagnostic codes](../diagnostics.md) Â· [JSON contract](../json-output.md)

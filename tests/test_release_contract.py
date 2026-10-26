@@ -36,4 +36,4 @@ def test_tcp_success_has_an_explicit_transport_code_and_major_schema():
 
 def test_release_version_matches_package_metadata():
     metadata = tomllib.loads(Path("pyproject.toml").read_text())
-    assert __version__ == metadata["project"]["version"] == "0.4.0"
+    assert __version__ == metadata["project"]["version"] == "0.4.1"

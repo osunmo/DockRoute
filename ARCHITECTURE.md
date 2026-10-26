@@ -1,6 +1,6 @@
 # DockRoute Architecture & Diagnostic Boundaries
 
-This document defines the architectural boundaries of DockRoute, specifying the scope of its static analysis and active probing, what failure modes it is engineered to diagnose, and what remains explicitly outside its diagnostic capabilities.
+This document defines the architectural boundaries of DockRoute, specifying the scope of its environment preflight checks, static analysis, active probing, what failure modes it is engineered to diagnose, and what remains explicitly outside its diagnostic capabilities.
 
 ---
 
@@ -13,19 +13,25 @@ DockRoute operates as a local-first connection linter and diagnostic tool for Do
 
 ---
 
-## 2. What DockRoute Diagnoses
+## 2. Environment Preflight & Tool Robustness
 
-DockRoute is designed to detect and diagnose specific Docker Engine, Compose configuration, and network topology issues:
+DockRoute distinguishes between local Docker environment preflight health and Compose project network diagnostics. Before analyzing Compose topology, DockRoute validates environment prerequisites and daemon responsiveness:
 
 ### 2.1. Docker Daemon Reachability & Socket Preflight
 - **Active Socket Connection Probing**: Validates that the Docker Engine socket (`/var/run/docker.sock` or `DOCKER_HOST`) is not only present with valid filesystem permissions, but actively responding. Detects when the Docker daemon is stopped (`ECONNREFUSED`) or hung/unresponsive (connection timeout), providing actionable remediation guidance.
-- **Windows Named Pipes (`npipe://`) Guidance**: Explicitly intercepts Windows named pipe endpoints, informing the user that Windows named pipes cannot be traversed by Linux probe helpers and guiding configuration toward `tcp://host.docker.internal:2375` or the WSL2 Unix socket.
+- **Windows Named Pipes (`npipe://`) Reachability**: Docker Desktop on Windows communicates via named pipes (`npipe:////./pipe/docker_engine` or `npipe:////./pipe/dockerDesktopLinuxEngine`). DockRoute validates named pipe availability and reachability during preflight, checking pipe existence and connection readiness before initiating Docker SDK operations.
 
 ### 2.2. Socket Mounts & GID Permissions
 - **Socket Permissions & Access**: Verifies accessibility of `/var/run/docker.sock` and flags permission denials caused by user/group ID mismatches with the host Docker daemon group (`docker` group GID).
 - **Socket Proxy Endpoint Restrictions**: Diagnoses connection and API failures when communicating via security socket proxies (e.g., `tecnativa/docker-socket-proxy`) where specific API endpoints (such as `/containers/json` or exec endpoints) are restricted or disallowed.
 
-### 2.3. Compose Network Topology & Ingress Routing
+---
+
+## 3. What DockRoute Diagnoses (Compose Network Topology & Routing)
+
+DockRoute is designed to detect and diagnose specific Docker Engine, Compose configuration, and inter-service network topology issues:
+
+### 3.1. Compose Network Topology & Ingress Routing
 - **Network Isolation (`NETWORK_ISOLATION`)**: Identifies when services attempt to communicate across disparate, non-overlapping Docker bridge networks without a shared network bridge.
 - **Ingress DNS & Tunnel Routing Collisions**: Detects conflicting container DNS aliases, hostname collisions across overlapping networks, and misrouted ingress or tunnel forwards.
 - **Host Port vs Container Port Confusion (`HOST_PORT_INSTEAD_OF_CONTAINER_PORT`)**: Diagnoses instances where application containers target host-published ports rather than internal container ports.
@@ -34,24 +40,24 @@ DockRoute is designed to detect and diagnose specific Docker Engine, Compose con
 
 ---
 
-## 3. What DockRoute Does NOT Diagnose (Architectural Boundaries)
+## 4. What DockRoute Does NOT Diagnose (Architectural Boundaries)
 
 DockRoute deliberately enforces strict boundaries to avoid false certainty and fragile heuristics. The following categories are explicitly **out of scope**:
 
-### 3.1. Inter-Container Application L4 / L7 Protocol Semantics
+### 4.1. Inter-Container Application L4 / L7 Protocol Semantics
 - **No Application-Layer Verification**: DockRoute evaluates network-layer DNS resolution and Layer 4 TCP handshakes (`TCP_REACHABLE`). It does **not** validate application-layer protocols (HTTP status codes such as 401, 403, 500; REST/GraphQL payload schemas; database wire protocols and authentication; AMQP/Redis handshakes; or gRPC stream states).
 - **No TLS / Certificate Validation**: DockRoute does not negotiate TLS handshakes or validate certificate trust chains for encrypted endpoints. `TCP_REACHABLE` confirms that a listener accepted the TCP connection, **not** that application-level authentication, negotiation, or health readiness succeeded.
 
-### 3.2. Localhost Loopback Errors in Arbitrary Runtimes
+### 4.2. Localhost Loopback Errors in Arbitrary Runtimes
 - **Internal Loopback Failures**: DockRoute does not diagnose loopback errors occurring inside complex application runtimes, nested virtual machines, sandboxes, or user processes that do not open container network listeners.
 
-### 3.3. Cross-Network Bridge Resolution & Complex Routing
+### 4.3. Cross-Network Bridge Resolution & Complex Routing
 - **Host IPTables & Custom CNI Routing**: DockRoute inspects standard Docker Compose network configurations. It does not trace custom host-level `iptables` / `nftables` rules, eBPF filters, third-party CNI plugins, Kubernetes multi-cluster networking, or multi-host VPN/mesh routing overlays.
 - **Arbitrary Unmounted Configurations**: Static analysis extracts endpoints only from supported configurations (environment variables, labels, and supported mounted files for Nginx, Envoy, and Prometheus). Arbitrary application configuration formats, templated secrets, and unmounted files are not analyzed.
 
 ---
 
-## 4. Exit Code and Diagnostic Code Guarantees
+## 5. Exit Code and Diagnostic Code Guarantees
 
 | Code | Type | Meaning |
 |:--|:--|:--|
@@ -61,5 +67,14 @@ DockRoute deliberately enforces strict boundaries to avoid false certainty and f
 | `DNS_FAILURE` | Transport Observation | Hostname failed to resolve within container network resolver. |
 | `NETWORK_ISOLATION` | Configuration Cause | Source and destination share no common Docker network. |
 | `UNKNOWN` | Abstention | Evidence is ambiguous or insufficient to assert a root cause. |
+
+---
+
+## 6. Continuous Integration & Test Matrix Guarantees
+
+DockRoute evaluates diagnostic precision against real-world Compose projects across its multi-project generalization test suite. The CI matrix runs:
+- **13 Target Compose Projects**: 13 diverse open-source Compose projects evaluated under controlled fault injection (such as network partition and misconfigured listeners).
+- **1 Registration / Aggregation Job**: Consolidates evaluation output and generates verified artifact manifests (totaling 14 workflow jobs).
+- **Core CI Workflow**: 12 unit/integration matrix jobs across Python versions + 1 fault scenarios job + 1 Linux accuracy job (14 workflow jobs).
 
 Refer to [diagnostics.md](docs/diagnostics.md) and [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) for detailed case studies and tracking.
